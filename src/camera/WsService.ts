@@ -9,7 +9,7 @@ export class WsService {
     private streamers: Map<string, any> = new Map();
     private clients: Set<any> = new Set();
 
-    constructor(private readonly cameraService: CameraService) {}
+    constructor(private readonly cameraService: CameraService) { }
 
     init(server: Server) {
 
@@ -28,7 +28,12 @@ export class WsService {
                     }
                 }
 
-                this.clients.delete(ws);
+                if (this.clients.delete(ws))
+                    console.log('Client disconnected')
+
+                console.log('Total clients: ', this.clients.size)
+                console.log('Total streamers: ', this.streamers.size)
+
             });
 
             ws.on('message', (data, isBinary) => {

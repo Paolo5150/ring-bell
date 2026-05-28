@@ -1,75 +1,70 @@
 import { Injectable, OnModuleInit } from '@nestjs/common';
 import { WebSocketServer } from 'ws';
 import { CameraService } from './camera.service'
-
+import { Server } from 'http';
 @Injectable()
-export class WsService implements OnModuleInit {
+export class WsService {
     private wss: WebSocketServer;
-    private streamers: Map<string, WebSocket> = new Map();
-    private clients: Set<WebSocket> = new Set();
+    private streamers: Map<string, any> = new Map();
+    private clients: Set<any> = new Set();
 
-    constructor(private readonly cameraService: CameraService) { }
+    constructor(private readonly cameraService: CameraService) {}
 
+    init(server: Server) {
 
-    onModuleInit() {
-        this.wss = new WebSocketServer({ port: 3001 });
+        this.wss = new WebSocketServer({ server });
 
         this.wss.on('connection', (ws) => {
             console.log('WS Client connected');
+
             ws.on('close', () => {
                 console.log('Someone disconnected');
 
-                for (const [key, ws] of this.streamers) {
-                    if (ws === ws) {
+                for (const [key, socket] of this.streamers) {
+                    if (socket === ws) {
                         this.streamers.delete(key);
-                        console.log('Streamer disconnected');
                         break;
                     }
                 }
-                if (this.clients.delete(ws))
-                    console.log('Client disconnected');
+
+                this.clients.delete(ws);
             });
 
             ws.on('message', (data, isBinary) => {
+
                 if (!isBinary) {
                     const text = data.toString();
 
                     if (text === 'client') {
-                        console.log('new client!')
-                        this.clients.add(ws)
-                        this.cameraService.startStream()
-
+                        this.clients.add(ws);
+                        this.cameraService.startStream();
                     }
-                    //Is it a device asking for streaming?
+
                     if (this.cameraService.isCameraRegistered(text)) {
-                        //Valid, add websocket as client
                         this.streamers.set(text, ws);
                         ws.send('WS: STREAM');
                     }
+
                     return;
                 }
-                else {
-                    console.log('Receiving stream')
-                    if (this.clients.size == 0) {
-                        this.cameraService.stopStream()
-                        ws.send('WS: STREAM STOP');
 
-                    }
-
-                    for (const client of this.clients) {
-                        if (client !== ws && client.readyState === WebSocket.OPEN) {
-                            client.send(data);
-                        }
-                    }
+                // binary stream
+                if (this.clients.size === 0) {
+                    this.cameraService.stopStream();
+                    ws.send('WS: STREAM STOP');
+                    return;
                 }
 
-
-
+                for (const client of this.clients) {
+                    if (client !== ws && client.readyState === WebSocket.OPEN) {
+                        client.send(data);
+                    }
+                }
             });
 
             ws.send('hello from server');
         });
 
-        console.log('WebSocket running on ws://localhost:3001');
+        console.log('WebSocket attached to HTTP server');
     }
 }

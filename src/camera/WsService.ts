@@ -2,6 +2,7 @@ import { Injectable, OnModuleInit } from '@nestjs/common';
 import { WebSocketServer } from 'ws';
 import { CameraService } from './camera.service'
 import { Server } from 'http';
+
 @Injectable()
 export class WsService {
     private wss: WebSocketServer;
